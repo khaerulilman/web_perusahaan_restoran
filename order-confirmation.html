@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Konfirmasi Pembayaran</title>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .status-column {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .search-container {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .search-container input {
+      padding: 8px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="confirmation-container">
+    <h2>Konfirmasi Pembayaran</h2>
+
+    <!-- Input untuk pencarian -->
+    <div class="search-container">
+      <input type="text" id="searchNama" placeholder="Cari nama pelanggan..." oninput="filterTable()">
+      <input type="text" id="searchMeja" placeholder="Cari no meja..." oninput="filterTable()">
+    </div>
+    <div style="display: flex;">
+      <div id="total_harga_pesanan">Total Harga Pesanan: Rp 100000</div>
+      <button id="resetButton" style="margin-left: 20px;">Reset Total Harga</button>
+    </div>
+
+
+
+    <table border="1">
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Nama Pelanggan</th>
+          <th>No Meja</th>
+          <th>Nama Pesanan</th>
+          <th>Quantity</th>
+          <th>Harga</th>
+          <th>Total Harga</th>
+          <th>Deskripsi Tambahan</th>
+          <th>Waktu Pemesanan</th>
+          <th>Status Pembayaran</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="pesananTableBody">
+        <!-- Data akan diisi oleh JavaScript -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    let pesananData = []; // Variabel untuk menyimpan data pesanan
+    let menuData = [];
+
+    async function fetchPesanan() {
+      try {
+        // Fetch orders and menu data concurrently
+        const [pesananResponse, menuResponse] = await Promise.all([
+          fetch('https://api-data-m1r4na08q-khaerulilmans-projects.vercel.app/pesanan'),
+          fetch('https://api-data-m1r4na08q-khaerulilmans-projects.vercel.app/menu')
+        ]);
+
+        let pesanan = await pesananResponse.json();
+        menuData = await menuResponse.json(); // Simpan menuData ke variabel global
+
+        // Ubah semua huruf di nama_pesanan dan nama_hidangan menjadi huruf kecil
+        pesanan = pesanan.map(p => ({
+          ...p,
+          nama_pesanan: p.nama_pesanan.toLowerCase()
+        }));
+
+        menuData = menuData.map(menu => ({
+          ...menu,
+          nama_hidangan: menu.nama_hidangan.toLowerCase()
+        }));
+
+        // Create a menu price map for easy lookup
+        const menuPriceMap = menuData.reduce((map, menu) => {
+          map[menu.nama_hidangan] = menu.harga;
+          return map;
+        }, {});
+
+        // Enhance pesanan data with price information
+        pesananData = pesanan.map(pesanan => ({
+          ...pesanan,
+          harga: menuPriceMap[pesanan.nama_pesanan] || 0,
+          total_harga: (menuPriceMap[pesanan.nama_pesanan] || 0) * pesanan.quantity
+        }));
+
+        renderTable(pesananData); // Render tabel dengan data yang diperbarui
+      } catch (error) {
+        console.error('Error:', error);
+      }
+    }
+
+
+    // Variabel global untuk menyimpan total harga
+    let totalHargaPesanan = 0;
+
+    // Fungsi untuk merender tabel
+    function renderTable(data) {
+      const tableBody = document.getElementById('pesananTableBody');
+      tableBody.innerHTML = ''; // Bersihkan isi tabel sebelum menambahkan data baru
+
+      data.forEach((pesanan, index) => {
+        const row = `
+    <tr id="row-${pesanan.id}"> 
+      <td>${index + 1}</td> 
+      <td>${pesanan.nama_pelanggan}</td> 
+      <td>${pesanan.no_meja}</td> 
+      <td>${pesanan.nama_pesanan}</td> 
+      <td>${pesanan.quantity}</td> 
+      <td>${pesanan.harga || 0}</td>
+      <td>${pesanan.total_harga || 0}</td>
+      <td>${pesanan.deskripsi_tambahan || '-'}</td> 
+      <td>${new Date(pesanan.waktu_pemesanan).toLocaleString()}</td> 
+      <td class="status-column"> 
+        <input  
+          type="checkbox"  
+          data-id="${pesanan.id}"  
+          data-harga="${pesanan.total_harga || 0}"  
+          ${pesanan.status_pembayaran ? 'checked' : ''}  
+          onchange="updateStatusPembayaran(this)" 
+        > 
+      </td> 
+      <td> 
+        <button class="delete-btn" onclick="deletePesanan(${pesanan.id})">Delete</button> 
+      </td>
+    </tr>`;
+        tableBody.innerHTML += row;
+      });
+    }
+
+    // Fungsi untuk memperbarui total harga
+    function updateTotalHarga(harga, isAdding) {
+      if (isAdding) {
+        totalHargaPesanan += harga;
+      } else {
+        totalHargaPesanan -= harga;
+      }
+      document.getElementById('total_harga_pesanan').innerText = `Total Harga: ${totalHargaPesanan}`;
+    }
+
+    document.getElementById('resetButton').addEventListener('click', function () {
+      // Ambil elemen total_harga_pesanan
+      const totalHargaElement = document.getElementById('total_harga_pesanan');
+
+      // Ubah kontennya menjadi nol
+      totalHargaElement.textContent = 'Total Harga Pesanan: Rp 0';
+    });
+
+
+    // Fungsi untuk update status pembayaran
+    async function updateStatusPembayaran(checkbox) {
+      const pesananId = checkbox.getAttribute('data-id');
+      const hargaPesanan = parseFloat(checkbox.getAttribute('data-harga')) || 0;
+      const statusPembayaran = checkbox.checked;
+
+      try {
+        const response = await fetch(`https://api-data-m1r4na08q-khaerulilmans-projects.vercel.app/pesanan/${pesananId}/status-pembayaran`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ status_pembayaran: statusPembayaran })
+        });
+
+        if (!response.ok) {
+          throw new Error('Gagal update status pembayaran');
+        }
+
+        const result = await response.json();
+        console.log(result.message);
+
+        // Update total harga berdasarkan status checkbox
+        updateTotalHarga(hargaPesanan, statusPembayaran);
+
+      } catch (error) {
+        console.error('Error:', error);
+        // Kembalikan checkbox ke kondisi semula jika gagal
+        checkbox.checked = !statusPembayaran;
+        alert('Gagal mengupdate status pembayaran');
+      }
+    }
+
+    // Fungsi untuk filter tabel berdasarkan dua input
+    function filterTable() {
+      const namaQuery = document.getElementById('searchNama').value.toLowerCase();
+      const mejaQuery = document.getElementById('searchMeja').value.toLowerCase();
+
+      // Filter data berdasarkan nama pelanggan dan no meja
+      const filteredData = pesananData.filter((pesanan) => {
+        const matchesNama = pesanan.nama_pelanggan.toLowerCase().includes(namaQuery);
+        const matchesMeja = pesanan.no_meja.toString().includes(mejaQuery);
+
+        // Pastikan kedua input cocok
+        return matchesNama && matchesMeja;
+      });
+
+      renderTable(filteredData); // Render tabel dengan data yang difilter
+    }
+
+    // Fungsi untuk menghapus pesanan
+    async function deletePesanan(pesananId) {
+      if (!confirm('Apakah Anda yakin ingin menghapus pesanan ini?')) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`https://api-data-m1r4na08q-khaerulilmans-projects.vercel.app/pesanan/${pesananId}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) {
+          throw new Error('Gagal menghapus pesanan');
+        }
+
+        const result = await response.json();
+        console.log(result.message);
+
+        // Hapus baris dari tabel
+        const row = document.getElementById(`row-${pesananId}`);
+        if (row) {
+          row.remove();
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Gagal menghapus pesanan');
+      }
+    }
+
+    // Panggil fungsi fetchPesanan saat halaman dimuat
+    document.addEventListener('DOMContentLoaded', fetchPesanan);
+
+  </script>
+</body>
+
+</html>
