@@ -36,7 +36,7 @@
       <input type="text" id="searchMeja" placeholder="Cari no meja..." oninput="filterTable()">
     </div>
     <div style="display: flex;">
-      <div id="total_harga_pesanan">Total Harga Pesanan: Rp 100000</div>
+      <div id="total_harga_pesanan">Total Harga :</div>
       <button id="resetButton" style="margin-left: 20px;">Reset Total Harga</button>
     </div>
 
@@ -113,49 +113,86 @@
     // Variabel global untuk menyimpan total harga
     let totalHargaPesanan = 0;
 
+    // Fungsi untuk memformat angka menjadi format tanpa desimal dan titik sebagai pemisah ribuan
+    function formatRupiah(angka) {
+      return Math.floor(angka).toLocaleString('id-ID'); // Menggunakan Math.floor untuk menghilangkan desimal
+    }
+
     // Fungsi untuk merender tabel
     function renderTable(data) {
       const tableBody = document.getElementById('pesananTableBody');
       tableBody.innerHTML = ''; // Bersihkan isi tabel sebelum menambahkan data baru
 
+      // Menambahkan style untuk checkbox
+      const style = document.createElement('style');
+      style.innerHTML = `
+    .status-column input[type="checkbox"] {
+      transform: scale(2.5); /* Membesarkan ukuran checkbox */
+      margin: 0; /* Menjaga margin default */
+    }
+  `;
+      document.head.appendChild(style); // Menambahkan style ke dalam head
+
       data.forEach((pesanan, index) => {
         const row = `
-    <tr id="row-${pesanan.id}"> 
-      <td>${index + 1}</td> 
-      <td>${pesanan.nama_pelanggan}</td> 
-      <td>${pesanan.no_meja}</td> 
-      <td>${pesanan.nama_pesanan}</td> 
-      <td>${pesanan.quantity}</td> 
-      <td>${pesanan.harga || 0}</td>
-      <td>${pesanan.total_harga || 0}</td>
-      <td>${pesanan.deskripsi_tambahan || '-'}</td> 
-      <td>${new Date(pesanan.waktu_pemesanan).toLocaleString()}</td> 
-      <td class="status-column"> 
-        <input  
-          type="checkbox"  
-          data-id="${pesanan.id}"  
-          data-harga="${pesanan.total_harga || 0}"  
-          ${pesanan.status_pembayaran ? 'checked' : ''}  
-          onchange="updateStatusPembayaran(this)" 
-        > 
-      </td> 
-      <td> 
-        <button class="delete-btn" onclick="deletePesanan(${pesanan.id})">Delete</button> 
-      </td>
-    </tr>`;
+      <tr id="row-${pesanan.id}"> 
+        <td>${index + 1}</td> 
+        <td>${pesanan.nama_pelanggan}</td> 
+        <td>${pesanan.no_meja}</td> 
+        <td>${pesanan.nama_pesanan}</td> 
+        <td>${pesanan.quantity}</td> 
+        <td>${pesanan.harga ? formatRupiah(pesanan.harga) : 0}</td>
+        <td>${pesanan.total_harga ? formatRupiah(pesanan.total_harga) : 0}</td>
+        <td>${pesanan.deskripsi_tambahan || '-'}</td> 
+        <td>${new Date(pesanan.waktu_pemesanan).toLocaleString()}</td> 
+        <td class="status-column"> 
+          <input  
+            type="checkbox"  
+            data-id="${pesanan.id}"  
+            data-harga="${pesanan.total_harga || 0}"  
+            ${pesanan.status_pembayaran ? 'checked' : ''}  
+            onchange="updateStatusPembayaran(this)" 
+          > 
+        </td> 
+        <td> 
+          <button class="delete-btn" onclick="deletePesanan(${pesanan.id})">Delete</button> 
+        </td>
+      </tr>`;
         tableBody.innerHTML += row;
       });
     }
+
+
 
     // Fungsi untuk memperbarui total harga
     function updateTotalHarga(harga, isAdding) {
       if (isAdding) {
         totalHargaPesanan += harga;
       } else {
-        totalHargaPesanan -= harga;
+        // Cek apakah totalHargaPesanan tidak kurang dari nol
+        totalHargaPesanan = Math.max(totalHargaPesanan - harga, 0);
       }
-      document.getElementById('total_harga_pesanan').innerText = `Total Harga: ${totalHargaPesanan}`;
+
+      // Format totalHargaPesanan dengan Rp, tambahkan koma setiap 3 angka, tanpa angka desimal
+      let formattedHarga = totalHargaPesanan.toLocaleString('id-ID', { maximumFractionDigits: 0 });
+
+      // Menampilkan total harga dengan format yang benar
+      document.getElementById('total_harga_pesanan').innerText = `Total Harga: Rp ${formattedHarga}`;
     }
+
+    // Fungsi untuk memperbarui status pembayaran dan total harga
+    function updateStatusPembayaran(checkbox) {
+      const pesananId = checkbox.getAttribute('data-id');
+      const harga = parseInt(checkbox.getAttribute('data-harga'));
+
+      // Update total harga saat checkbox dicentang atau dicentang ulang
+      if (checkbox.checked) {
+        updateTotalHarga(harga, true);  // Menambah harga
+      } else {
+        updateTotalHarga(harga, false); // Mengurangi harga
+      }
+    }
+
 
     document.getElementById('resetButton').addEventListener('click', function () {
       // Ambil elemen total_harga_pesanan
