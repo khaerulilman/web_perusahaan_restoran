@@ -79,35 +79,40 @@
             data.forEach((pesanan, index) => {
                 // Cek apakah status_pembayaran == 1
                 if (pesanan.status_pembayaran == 1) {
-                    const row = `
-                <tr id="row-${pesanan.id}">
-                    <td>${index + 1}</td>
-                    <td>${pesanan.nama_pelanggan}</td>
-                    <td>${pesanan.no_meja}</td>
-                    <td>${pesanan.nama_pesanan}</td>
-                    <td>${pesanan.quantity}</td>
-                    <td>${pesanan.deskripsi_tambahan || '-'}</td>
-                    <td>${new Date(pesanan.waktu_pemesanan).toLocaleString()}</td>
-                    <td class="status-column">
-                        <input 
-                            type="checkbox" 
-                            data-id="${pesanan.id}" 
-                            ${pesanan.status_pesanan ? 'checked' : ''} 
-                            onchange="updateStatusPesanan(this)"
-                        >
-                    </td>
-                    <td>
-                        <button class="delete-btn" onclick="deletePesanan(${pesanan.id})">Delete</button>
-                    </td>
-                </tr>
+                    const row = document.createElement('tr');
+                    row.id = `row-${pesanan.id}`;
+                    row.innerHTML = `
+                <td>${index + 1}</td>
+                <td>${pesanan.nama_pelanggan}</td>
+                <td>${pesanan.no_meja}</td>
+                <td>${pesanan.nama_pesanan}</td>
+                <td>${pesanan.quantity}</td>
+                <td>${pesanan.deskripsi_tambahan || '-'}</td>
+                <td>${new Date(pesanan.waktu_pemesanan).toLocaleString()}</td>
+                <td class="status-column">
+                    <input 
+                        type="checkbox" 
+                        data-id="${pesanan.id}" 
+                        ${pesanan.status_pesanan ? 'checked' : ''} 
+                        onchange="updateStatusPesanan(this)"
+                    >
+                </td>
+                <td>
+                    <button class="delete-btn" onclick="deletePesanan(${pesanan.id})">Delete</button>
+                </td>
             `;
-                    tableBody.innerHTML += row;
+                    tableBody.appendChild(row);
+
+                    // Menambahkan gaya untuk memperbesar checkbox
+                    const checkbox = row.querySelector('input[type="checkbox"]');
+                    checkbox.style.transform = 'scale(2.5)'; // Ukuran checkbox lebih besar
+                    checkbox.style.margin = '5px'; // Atur margin agar tidak terlalu rapat
                 } else {
-                    // Jika status_pembayaran != 1, bisa menampilkan sesuatu berbeda atau tidak merender baris sama sekali
                     console.log(`Pesanan ID ${pesanan.id} tidak memenuhi kriteria pembayaran.`);
                 }
             });
         }
+
 
 
 
